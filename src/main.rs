@@ -24,20 +24,28 @@ fn main() -> Result<()> {
         .context("Email is not set in the Git config; Please set email")?;
     let signature = Signature::now(&username, &email)
         .with_context(|| format!("Could not generate the signature from {username} and {email}"))?;
-    if repo.head().is_ok() {
-        let head = repo.head()?;
+    let oid = if repo.head().is_ok() {
+        let head_commit = repo.head()?.peel_to_commit()?;
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            "New Changes",
+            &tree,
+            &[&head_commit],
+        )
+        .context("Could not commit changes")?
     } else {
-        let oid = repo
-            .commit(
-                Some("HEAD"),
-                &signature,
-                &signature,
-                "Initial Commit",
-                &tree,
-                &[],
-            )
-            .context("Could not commit the changes to the repository")?;
-        println!("{oid}")
-    }
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            "Initial Commit",
+            &tree,
+            &[],
+        )
+        .context("Could not commit the changes to the repository")?
+    };
+    println!("{oid}");
     Ok(())
 }
