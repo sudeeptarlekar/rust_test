@@ -1,5 +1,9 @@
 use anyhow::{bail, Context, Result};
-use git2::{Commit, Config, Index, IndexAddOption, Repository, Signature};
+use git2::{
+    Commit, Config, Cred, Index, IndexAddOption, PushOptions, RemoteCallbacks, Repository,
+    Signature,
+};
+use std::path::Path;
 
 fn main() -> Result<()> {
     let repo = Repository::open(".")?;
@@ -47,5 +51,24 @@ fn main() -> Result<()> {
         .context("Could not commit the changes to the repository")?
     };
     println!("{oid}");
+
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(|_url, username_from_url, _allowed_types| {
+        Cred::ssh_key(
+            username_from_url.unwrap(),
+            None,
+            Path::new("/Users/sudeep.tarlekar/.ssh/id_rsa"),
+            None,
+        )
+    });
+
+    let mut push_opts = PushOptions::new();
+    push_opts.remote_callbacks(callbacks);
+    let mut remote = repo.find_remote("origin")?;
+    let refspecs = "refs/heads/master:refs/heads/master";
+
+    remote
+        .push(&[refspecs], Some(&mut push_opts))
+        .context("Error while pushing changes to remote using ssh config")?;
     Ok(())
 }
