@@ -5,7 +5,15 @@ use git2::{
 };
 use std::path::Path;
 
-fn add_and_commit_changes(repo: &Repository, tree: &Tree) -> Result<Oid> {
+fn add_and_commit_changes(repo: &Repository) -> Result<Oid> {
+    let mut index = repo.index()?;
+    index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)?;
+    index.write()?;
+    let oid = index
+        .write_tree()
+        .context("Error while writing the tree to the index")?;
+
+    let tree = repo.find_tree(oid)?;
     let config = repo
         .config()
         .context("Could not get the config from the repo")?;
@@ -25,8 +33,8 @@ fn add_and_commit_changes(repo: &Repository, tree: &Tree) -> Result<Oid> {
             Some("HEAD"),
             &signature,
             &signature,
-            "New Changes",
-            tree,
+            "Added new function",
+            &tree,
             &[&head_commit],
         )
         .context("Could not commit changes")?
@@ -36,7 +44,7 @@ fn add_and_commit_changes(repo: &Repository, tree: &Tree) -> Result<Oid> {
             &signature,
             &signature,
             "Initial Commit",
-            tree,
+            &tree,
             &[],
         )
         .context("Could not commit the changes to the repository")?
@@ -46,15 +54,7 @@ fn add_and_commit_changes(repo: &Repository, tree: &Tree) -> Result<Oid> {
 
 fn main() -> Result<()> {
     let repo = Repository::open(".")?;
-    let mut index = repo.index()?;
-    index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)?;
-    index.write()?;
-    let oid = index
-        .write_tree()
-        .context("Error while writing the tree to the index")?;
-
-    let tree = repo.find_tree(oid)?;
-    let oid = add_and_commit_changes(&repo, &tree)?;
+    let oid = add_and_commit_changes(&repo)?;
     println!("{oid}");
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(|_url, username_from_url, _allowed_types| {
