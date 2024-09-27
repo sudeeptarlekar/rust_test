@@ -33,7 +33,7 @@ fn add_and_commit_changes(repo: &Repository) -> Result<Oid> {
             Some("HEAD"),
             &signature,
             &signature,
-            "Added new function",
+            "Fixed ssh id path",
             &tree,
             &[&head_commit],
         )
@@ -61,7 +61,7 @@ fn main() -> Result<()> {
         Cred::ssh_key(
             username_from_url.unwrap(),
             None,
-            Path::new("/Users/sudeep.tarlekar/.ssh/id_rsa"),
+            Path::new("/Users/sudeep.tarlekar/.ssh/id_rsa_github"),
             None,
         )
     });
