@@ -1,14 +1,12 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use git2::{BranchType, Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository};
+use git2::{Cred, PushOptions, RemoteCallbacks, Repository};
 
 fn main() -> Result<()> {
     let ssh_key_path: PathBuf = PathBuf::from("/Users/sudeep.tarlekar/.ssh/id_rsa_github");
 
     let repo = Repository::open(".").context("Current directory is not a git Repo")?;
-    let branch = repo.find_branch("test_branch", BranchType::Local)?;
-    let branch_ref = branch.get();
 
     let mut remote = repo
         .find_remote("origin")
