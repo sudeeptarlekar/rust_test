@@ -1,78 +1,100 @@
-use anyhow::{bail, Context, Result};
-use git2::{
-    Commit, Config, Cred, Index, IndexAddOption, Oid, PushOptions, RemoteCallbacks, Repository,
-    Signature, Tree,
-};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-fn add_and_commit_changes(repo: &Repository) -> Result<Oid> {
-    let mut index = repo.index()?;
-    index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)?;
-    index.write()?;
-    let oid = index
-        .write_tree()
-        .context("Error while writing the tree to the index")?;
-
-    let tree = repo.find_tree(oid)?;
-    let config = repo
-        .config()
-        .context("Could not get the config from the repo")?;
-    // user.name and email cannot be empty; Git won't allow to set an empty username and email in
-    // the config so no need to check the emptyness for these config values.
-    let username = config
-        .get_string("user.name")
-        .context("Username is not set in the Git config; Please set username")?;
-    let email = config
-        .get_string("user.email")
-        .context("Email is not set in the Git config; Please set email")?;
-    let signature = Signature::now(&username, &email)
-        .with_context(|| format!("Could not generate the signature from {username} and {email}"))?;
-    let oid = if repo.head().is_ok() {
-        let head_commit = repo.head()?.peel_to_commit()?;
-        repo.commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            "Fixed ssh id path",
-            &tree,
-            &[&head_commit],
-        )
-        .context("Could not commit changes")?
-    } else {
-        repo.commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            "Initial Commit",
-            &tree,
-            &[],
-        )
-        .context("Could not commit the changes to the repository")?
-    };
-    Ok(oid)
-}
+use anyhow::Result;
 
 fn main() -> Result<()> {
-    let repo = Repository::open(".")?;
-    let oid = add_and_commit_changes(&repo)?;
-    println!("{oid}");
-    let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(|_url, username_from_url, _allowed_types| {
-        Cred::ssh_key(
-            username_from_url.unwrap(),
-            None,
-            Path::new("/Users/sudeep.tarlekar/.ssh/id_rsa_github"),
-            None,
-        )
+    let repo = git2::Repository::open(".")?;
+
+    let gerrit_private_key =
+        PathBuf::from("/Users/sudeep.tarlekar/.ssh/id_ed25519_test_automation");
+    let github_private_key = PathBuf::from("/Users/sudeep.tarlekar/.ssh/id_ed25519_github");
+
+    let mut upstream_remote = repo.find_remote("upstream")?;
+    let mut gerrit_remote = repo.find_remote("gerrit")?;
+
+    if !(upstream_remote.connect(git2::Direction::Fetch).is_ok()
+        && upstream_remote.connect(git2::Direction::Push).is_ok())
+    {
+        anyhow::bail!("Could not push or fetch from upstream remote");
+    }
+
+    if !(gerrit_remote.connect(git2::Direction::Fetch).is_ok()
+        && gerrit_remote.connect(git2::Direction::Push).is_ok())
+    {
+        anyhow::bail!("Could not push or fetch from upstream remote");
+    }
+
+    let mut fetch_options = git2::FetchOptions::new();
+    let cbs = setup_remote_callbacks(github_private_key.as_path())?;
+    fetch_options.remote_callbacks(cbs);
+
+    upstream_remote.fetch(&[] as &[&str], Some(&mut fetch_options), None)?;
+
+    let mut push_options = git2::PushOptions::new();
+    let cbs = setup_remote_callbacks(gerrit_private_key.as_path())?;
+    push_options.remote_callbacks(cbs);
+
+    let branches = repo
+        .branches(Some(git2::BranchType::Remote))?
+        .filter_map(Result::ok)
+        .filter_map(|(branch, _branch_type)| branch.name().ok().flatten().map(String::from))
+        .filter(|branch_name| branch_name.starts_with("upstream/"))
+        .filter_map(|branch_name| branch_name.split("/").last().map(String::from))
+        .collect::<Vec<String>>();
+
+    println!("{branches:?}");
+
+    for branch in branches {
+        println!("Pushing branch {branch}...");
+        let refspec = format!("refs/remotes/upstream/{branch}:refs/heads/{branch}");
+        println!("branch mapping: {refspec}");
+
+        match gerrit_remote.push(&[&refspec], Some(&mut push_options)) {
+            Ok(_) => {
+                println!("Force push completed successfully");
+            }
+            Err(e) => {
+                eprintln!(
+                    "Push error: {} (class: {:?}, code: {:?})",
+                    e,
+                    e.class(),
+                    e.code()
+                );
+
+                // Specific diagnostics based on error code
+                match e.code() {
+                    git2::ErrorCode::BareRepo => {
+                        eprintln!("Issue with bare repository configuration")
+                    }
+                    git2::ErrorCode::NotFound => eprintln!("Remote or reference not found"),
+                    git2::ErrorCode::Auth => eprintln!("Authentication failed"),
+                    _ => eprintln!("Other error type: {:?}", e.code()),
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn setup_remote_callbacks<'ssh_key, 'callbacks>(
+    private_key: &'ssh_key Path,
+) -> Result<git2::RemoteCallbacks<'callbacks>>
+where
+    'ssh_key: 'callbacks,
+{
+    let mut cbs = git2::RemoteCallbacks::new();
+    cbs.credentials(|_url, username, _allowed_types| {
+        git2::Cred::ssh_key(username.unwrap(), None, private_key, None)
     });
 
-    let mut push_opts = PushOptions::new();
-    push_opts.remote_callbacks(callbacks);
-    let mut remote = repo.find_remote("origin")?;
-    let refspecs = "refs/heads/master:refs/heads/master";
+    cbs.transfer_progress(|stats| {
+        println!(
+            "Transfer progress: {}/{} objects",
+            stats.received_objects(),
+            stats.total_objects()
+        );
+        true
+    });
 
-    remote
-        .push(&[refspecs], Some(&mut push_opts))
-        .context("Error while pushing changes to remote using ssh config")?;
-    Ok(())
+    Ok(cbs)
 }
