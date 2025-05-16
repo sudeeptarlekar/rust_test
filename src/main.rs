@@ -1,100 +1,97 @@
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 fn main() -> Result<()> {
     let repo = git2::Repository::open(".")?;
-
     let gerrit_private_key =
         PathBuf::from("/Users/sudeep.tarlekar/.ssh/id_ed25519_test_automation");
     let github_private_key = PathBuf::from("/Users/sudeep.tarlekar/.ssh/id_ed25519_github");
 
-    let mut upstream_remote = repo.find_remote("upstream")?;
     let mut gerrit_remote = repo.find_remote("gerrit")?;
+    let mut upstream_remote = repo.find_remote("upstream")?;
 
-    if !(upstream_remote.connect(git2::Direction::Fetch).is_ok()
-        && upstream_remote.connect(git2::Direction::Push).is_ok())
-    {
-        anyhow::bail!("Could not push or fetch from upstream remote");
-    }
+    fetch_remote(&mut gerrit_remote, gerrit_private_key.as_path())?;
+    fetch_remote(&mut upstream_remote, github_private_key.as_path())?;
 
-    if !(gerrit_remote.connect(git2::Direction::Fetch).is_ok()
-        && gerrit_remote.connect(git2::Direction::Push).is_ok())
-    {
-        anyhow::bail!("Could not push or fetch from upstream remote");
-    }
-
-    let mut fetch_options = git2::FetchOptions::new();
-    let cbs = setup_remote_callbacks(github_private_key.as_path())?;
-    fetch_options.remote_callbacks(cbs);
-
-    upstream_remote.fetch(&[] as &[&str], Some(&mut fetch_options), None)?;
-
-    let mut push_options = git2::PushOptions::new();
-    let cbs = setup_remote_callbacks(gerrit_private_key.as_path())?;
-    push_options.remote_callbacks(cbs);
-
-    let branches = repo
+    let upstream_branches = repo
         .branches(Some(git2::BranchType::Remote))?
         .filter_map(Result::ok)
-        .filter_map(|(branch, _branch_type)| branch.name().ok().flatten().map(String::from))
-        .filter(|branch_name| branch_name.starts_with("upstream/"))
-        .filter_map(|branch_name| branch_name.split("/").last().map(String::from))
-        .collect::<Vec<String>>();
+        .map(|(branch, _branch_type)| branch)
+        .filter(|branch| {
+            branch
+                .name()
+                .is_ok_and(|branch_name| branch_name.unwrap_or("").starts_with("upstream/"))
+        })
+        .collect::<Vec<git2::Branch>>();
 
-    println!("{branches:?}");
+    for branch in upstream_branches {
+        let branch_name = branch
+            .name()?
+            .context("Missing branch name")?
+            .split("/")
+            .collect::<Vec<&str>>()
+            .get(1..)
+            .map(|x| x.join("/"))
+            .context("Unable to get branch name")?;
 
-    for branch in branches {
-        println!("Pushing branch {branch}...");
-        let refspec = format!("refs/remotes/upstream/{branch}:refs/heads/{branch}");
-        println!("branch mapping: {refspec}");
+        println!("Pushing branch from upstream : {branch_name}");
 
-        match gerrit_remote.push(&[&refspec], Some(&mut push_options)) {
-            Ok(_) => {
-                println!("Force push completed successfully");
-            }
-            Err(e) => {
-                eprintln!(
-                    "Push error: {} (class: {:?}, code: {:?})",
-                    e,
-                    e.class(),
-                    e.code()
-                );
+        let refspec = format!("refs/remotes/upstream/{branch_name}:refs/heads/{branch_name}");
 
-                // Specific diagnostics based on error code
-                match e.code() {
-                    git2::ErrorCode::BareRepo => {
-                        eprintln!("Issue with bare repository configuration")
-                    }
-                    git2::ErrorCode::NotFound => eprintln!("Remote or reference not found"),
-                    git2::ErrorCode::Auth => eprintln!("Authentication failed"),
-                    _ => eprintln!("Other error type: {:?}", e.code()),
-                }
-            }
-        }
+        push_remote(&mut gerrit_remote, gerrit_private_key.as_path(), &refspec)?;
     }
     Ok(())
 }
 
-fn setup_remote_callbacks<'ssh_key, 'callbacks>(
+fn generate_push_options<'ssh_key, 'push_opts>(
     private_key: &'ssh_key Path,
-) -> Result<git2::RemoteCallbacks<'callbacks>>
+) -> Result<git2::PushOptions<'push_opts>>
 where
-    'ssh_key: 'callbacks,
+    'ssh_key: 'push_opts,
 {
+    let mut push_options = git2::PushOptions::new();
     let mut cbs = git2::RemoteCallbacks::new();
-    cbs.credentials(|_url, username, _allowed_types| {
-        git2::Cred::ssh_key(username.unwrap(), None, private_key, None)
+
+    cbs.credentials(|_url, username_from_url, _allowed_types| {
+        git2::Cred::ssh_key(username_from_url.unwrap_or("git"), None, private_key, None)
     });
 
-    cbs.transfer_progress(|stats| {
-        println!(
-            "Transfer progress: {}/{} objects",
-            stats.received_objects(),
-            stats.total_objects()
-        );
-        true
+    push_options.remote_callbacks(cbs);
+
+    Ok(push_options)
+}
+
+fn generate_fetch_options<'ssh_key, 'fetch_opts>(
+    private_key: &'ssh_key Path,
+) -> Result<git2::FetchOptions<'fetch_opts>>
+where
+    'ssh_key: 'fetch_opts,
+{
+    let mut fetch_options = git2::FetchOptions::new();
+    let mut cbs = git2::RemoteCallbacks::new();
+
+    cbs.credentials(|_url, username_from_url, _allowed_types| {
+        git2::Cred::ssh_key(username_from_url.unwrap_or("git"), None, private_key, None)
     });
 
-    Ok(cbs)
+    fetch_options.remote_callbacks(cbs);
+
+    Ok(fetch_options)
+}
+
+fn fetch_remote(remote: &mut git2::Remote, ssh_key: &Path) -> Result<()> {
+    let mut fetch_options = generate_fetch_options(ssh_key)?;
+    remote
+        .fetch(&[] as &[&str], Some(&mut fetch_options), None)
+        .with_context(|| format!("Could not fetch remote {:?}", remote.name()))
+}
+
+fn push_remote(remote: &mut git2::Remote, ssh_key: &Path, refspec: &str) -> Result<()> {
+    let mut push_options = generate_push_options(ssh_key)?;
+
+    remote
+        .push(&[refspec], Some(&mut push_options))
+        .context("Unable to push to remote")
 }
