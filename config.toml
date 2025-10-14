@@ -1,0 +1,87 @@
+[repositories.".eclipsefdn"]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/.eclipsefdn"
+upstream = "git@github.com:eclipse-score/.eclipsefdn.git"
+
+[repositories.baselibs]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/baselibs"
+upstream = "git@github.com:eclipse-score/baselibs.git"
+
+[repositories.bazel_registry]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/bazel_registry"
+upstream = "git@github.com:eclipse-score/bazel_registry.git"
+
+[repositories.cicd-workflows]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/cicd-workflows"
+upstream = "git@github.com:eclipse-score/cicd-workflows.git"
+
+[repositories.communication]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/communication"
+upstream = "git@github.com:eclipse-score/communication.git"
+
+[repositories."eclipse-score.github.io"]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/eclipse-score.github.io"
+upstream = "git@github.com:eclipse-score/eclipse-score.github.io.git"
+
+[repositories.examples]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/examples"
+upstream = "git@github.com:eclipse-score/examples.git"
+
+[repositories.inc_feo]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/inc_feo"
+upstream = "git@github.com:eclipse-score/inc_feo.git"
+
+[repositories.inc_mw_com]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/inc_mw_com"
+upstream = "git@github.com:eclipse-score/inc_mw_com.git"
+
+[repositories.inc_mw_log]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/inc_mw_log"
+upstream = "git@github.com:eclipse-score/inc_mw_log.git"
+
+[repositories.inc_mw_per]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/inc_mw_per"
+upstream = "git@github.com:eclipse-score/inc_mw_per.git"
+
+[repositories.inc_process_test_management]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/inc_process_test_management"
+upstream = "git@github.com:eclipse-score/inc_process_test_management.git"
+
+[repositories.inc_process_variant_management]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/inc_process_variant_management"
+upstream = "git@github.com:eclipse-score/inc_process_variant_management.git"
+
+[repositories.itf]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/itf"
+upstream = "git@github.com:eclipse-score/itf.git"
+
+[repositories.module_template]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/module_template"
+upstream = "git@github.com:eclipse-score/module_template.git"
+
+[repositories.operating_system]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/operating_system"
+upstream = "git@github.com:eclipse-score/operating_system.git"
+
+[repositories.process_description]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/process_description"
+upstream = "git@github.com:eclipse-score/process_description.git"
+
+[repositories.reference_integration]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/reference_integration"
+upstream = "git@github.com:eclipse-score/reference_integration.git"
+
+[repositories.score]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/score"
+upstream = "git@github.com:eclipse-score/score.git"
+
+[repositories.toolchains_gcc]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/toolchains_gcc"
+upstream = "git@github.com:eclipse-score/toolchains_gcc.git"
+
+[repositories.toolchains_qnx]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/toolchains_qnx"
+upstream = "git@github.com:eclipse-score/toolchains_qnx.git"
+
+[repositories.tooling]
+origin = "ssh://sudeep.tarlekar@gerrit.int.esrlabs.com:29418/eclipse-score/tooling"
+upstream = "git@github.com:eclipse-score/tooling.git"
