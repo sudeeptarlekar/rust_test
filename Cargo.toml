@@ -15,12 +15,14 @@ hyper-util = "0.1.16"
 log = "0.4"
 os_pipe = "1.2"
 rand = "0.9"
+mcp_server = { version = "0.1", path = "/Users/sudeep.tarlekar/Projects/chipmunk/application/apps/indexer/mcp"}
 ratatui = "0.28.0"
 regex = "1.10"
 reqwest = { version = "0.12", features = ["json", "blocking", "stream"] }
 rodio = "0.21"
 rpassword = "7.4"
-rmcp = { version = "0.8.0", features = ["server"] }
+rmcp = { version = "0.8", features = ["server", "transport-io"] }
+schemars = "1.0"
 scopeguard = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -30,6 +32,8 @@ tempfile = "3.21"
 tokio = { version = "1.44", features = ["full"] }
 tokio-native-tls = "0.3.1"
 tokio-stream = { version = "0.1", features = ["sync"] }
+tracing-subscriber = { version = "0.3", features = ["fmt", "std", "env-filter"] }
+tracing = "0.1"
 toml = "0.8"
 url = "2.5"
 walkdir = "2"
